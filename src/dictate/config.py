@@ -13,6 +13,17 @@ class ServerConfig:
     url: str = "http://localhost:8080"
 
 
+DEFAULT_HALLUCINATION_PATTERNS = [
+    r"^\s*\*[^*]+\*\s*$",           # *punch*, *cough*, *music*
+    r"^\s*\[[^\]]+\]\s*$",          # [BLANK_AUDIO], [Music], [silence]
+    r"^\s*\(\s*[^)]*\s*\)\s*$",     # ( ), (silence)
+    r"^\s*Thanks?\s+for\s+watching.*$",
+    r"^\s*Thank\s+you\.?\s*$",
+    r"^\s*you\.?\s*$",
+    r"^\s*\.?\s*$",                 # bare period or empty
+]
+
+
 @dataclass
 class RecordingConfig:
     device: str = "pulse"
@@ -21,6 +32,7 @@ class RecordingConfig:
     max_local_copies: int = 50
     silence_rms_threshold: float = 200.0
     min_duration_ms: int = 250
+    discard_if_matches: list[str] = field(default_factory=lambda: list(DEFAULT_HALLUCINATION_PATTERNS))
 
 
 @dataclass

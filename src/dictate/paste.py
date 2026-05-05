@@ -22,17 +22,18 @@ async def paste_at_cursor(
     if not text:
         return
 
+    ok = False
     if method == "clipboard":
-        await _paste_clipboard(text)
+        ok = await _paste_clipboard(text)
     elif method == "ydotool":
-        await _type_ydotool(text)
+        ok = await _type_ydotool(text)
     elif method == "wtype":
-        await _type_wtype(text)
+        ok = await _type_wtype(text)
     else:
         log.error("unknown paste method: %s", method)
         return
 
-    if press_enter_after:
+    if ok and press_enter_after:
         await _press_enter()
 
 
@@ -57,13 +58,13 @@ async def _press_enter() -> None:
                   proc.returncode, stderr.decode(errors="replace"))
 
 
-async def _paste_clipboard(text: str) -> None:
+async def _paste_clipboard(text: str) -> bool:
     if not shutil.which("wl-copy"):
         log.error("wl-copy not installed (need wl-clipboard package)")
-        return
+        return False
     if not shutil.which("ydotool"):
         log.error("ydotool not installed")
-        return
+        return False
 
     # wl-copy daemonizes (double-fork) so its stdout/stderr fds stay open
     # in the daemon child. If we pipe them, asyncio.communicate() waits for
@@ -84,10 +85,10 @@ async def _paste_clipboard(text: str) -> None:
         log.error("wl-copy didn't exit within 2s; killing")
         copy.kill()
         await copy.wait()
-        return
+        return False
     if copy.returncode != 0:
         log.error("wl-copy failed (rc=%d)", copy.returncode)
-        return
+        return False
 
     # Wait for the clipboard manager to actually pick up the new content
     # before firing the paste chord; without this delay Konsole pastes the
@@ -110,15 +111,17 @@ async def _paste_clipboard(text: str) -> None:
         log.error("ydotool key timed out; killing")
         proc.kill()
         await proc.wait()
-        return
+        return False
     if proc.returncode != 0:
         log.error("ydotool key failed (rc=%d): %s", proc.returncode, stderr.decode(errors="replace"))
+        return False
+    return True
 
 
-async def _type_ydotool(text: str) -> None:
+async def _type_ydotool(text: str) -> bool:
     if not shutil.which("ydotool"):
         log.error("ydotool not installed")
-        return
+        return False
     proc = await asyncio.create_subprocess_exec(
         "ydotool", "type", "--key-delay", "8", "--", text,
         stdout=asyncio.subprocess.PIPE,
@@ -127,12 +130,14 @@ async def _type_ydotool(text: str) -> None:
     _, stderr = await proc.communicate()
     if proc.returncode != 0:
         log.error("ydotool failed (rc=%d): %s", proc.returncode, stderr.decode(errors="replace"))
+        return False
+    return True
 
 
-async def _type_wtype(text: str) -> None:
+async def _type_wtype(text: str) -> bool:
     if not shutil.which("wtype"):
         log.error("wtype not installed")
-        return
+        return False
     proc = await asyncio.create_subprocess_exec(
         "wtype", "--", text,
         stdout=asyncio.subprocess.PIPE,
@@ -141,3 +146,5 @@ async def _type_wtype(text: str) -> None:
     _, stderr = await proc.communicate()
     if proc.returncode != 0:
         log.error("wtype failed (rc=%d): %s", proc.returncode, stderr.decode(errors="replace"))
+        return False
+    return True

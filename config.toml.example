@@ -10,6 +10,17 @@ keep_local_copies = false       # if true, save WAVs to ~/.local/share/dictate/r
 max_local_copies = 50
 silence_rms_threshold = 200.0   # skip transcription if WAV's RMS energy is below this (whisper hallucinates on silence)
 min_duration_ms = 250           # skip transcription for recordings shorter than this (accidental hotkey taps)
+# Hallucination filter: drop transcriptions whose final text matches any of these regexes.
+# Whisper.cpp hallucinates on near-silent input; these are the common training-data ghosts.
+discard_if_matches = [
+    '^\s*\*[^*]+\*\s*$',            # *punch*, *cough*, *music*
+    '^\s*\[[^\]]+\]\s*$',           # [BLANK_AUDIO], [Music], [silence]
+    '^\s*\(\s*[^)]*\s*\)\s*$',      # ( ), (silence)
+    '^\s*Thanks?\s+for\s+watching.*$',
+    '^\s*Thank\s+you\.?\s*$',
+    '^\s*you\.?\s*$',
+    '^\s*\.?\s*$',                  # bare period or empty
+]
 
 [hotkey]
 toggle = "Meta+Space"           # initial preferred trigger; rebind anytime in System Settings → Shortcuts → "dictate"

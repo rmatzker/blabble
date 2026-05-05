@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 import signal as posix_signal
 import sys
 import uuid
@@ -121,6 +122,11 @@ class DictateService:
             ]
             text = transform.apply_pipeline(text, steps)
             log.info("transcribed (final): %r", text)
+
+            for pattern in self.cfg.recording.discard_if_matches:
+                if re.match(pattern, text):
+                    log.info("discarding hallucination match (%r): %r", pattern, text)
+                    return
 
             if text:
                 await paste.paste_at_cursor(
