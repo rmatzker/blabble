@@ -1,0 +1,37 @@
+# dictate config — copied to ~/.config/dictate/config.toml on first install
+
+[server]
+url = "http://localhost:8080"
+
+[recording]
+device = "pulse"
+sample_rate = 16000
+keep_local_copies = false       # if true, save WAVs to ~/.local/share/dictate/recordings/
+max_local_copies = 50
+
+[hotkey]
+toggle = "Meta+Space"           # initial preferred trigger; rebind anytime in System Settings → Shortcuts → "dictate"
+
+[sounds]
+enabled = true
+start = "auto"                  # "auto" = generated upward blip; or absolute path to a .wav
+stop  = "auto"                  # "auto" = generated downward blip
+
+[paste]
+method = "clipboard"            # "clipboard" (wl-copy + ydotool Ctrl+Shift+V — fastest, replaces clipboard)
+                                # "ydotool"   (types char-by-char; drops chars at low key-delay on KWin)
+                                # "wtype"     (wlroots compositors only)
+press_enter_after = false       # if true, send Enter after the paste (saves the keystroke when dictating into chat/prompts)
+
+[tray]
+enabled = true
+icon_idle = "audio-input-microphone"
+icon_recording = "media-record"
+
+# Transformations run in order on the transcribed text before paste.
+# Strip whisper.cpp's per-segment newlines (the contraction-split fix).
+[[transformations]]
+name = "strip newlines"
+find = '\s*\n+\s*'
+replace = " "
+regex = true

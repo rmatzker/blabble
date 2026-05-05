@@ -1,0 +1,16 @@
+[Unit]
+Description=dictate — local-first voice dictation
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=@VENV@/bin/python -m dictate
+Restart=on-failure
+RestartSec=5
+# Don't crash-loop too aggressively if something is genuinely wrong
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Install]
+WantedBy=graphical-session.target
