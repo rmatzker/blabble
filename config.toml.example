@@ -8,6 +8,8 @@ device = "pulse"
 sample_rate = 16000
 keep_local_copies = false       # if true, save WAVs to ~/.local/share/dictate/recordings/
 max_local_copies = 50
+silence_rms_threshold = 200.0   # skip transcription if WAV's RMS energy is below this (whisper hallucinates on silence)
+min_duration_ms = 250           # skip transcription for recordings shorter than this (accidental hotkey taps)
 
 [hotkey]
 toggle = "Meta+Space"           # initial preferred trigger; rebind anytime in System Settings → Shortcuts → "dictate"

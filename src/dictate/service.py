@@ -103,6 +103,15 @@ class DictateService:
             self.recorder.stop(wav_path)
             log.info("recording saved: %s", wav_path)
 
+            silent, reason = recorder.is_silent(
+                wav_path,
+                rms_threshold=self.cfg.recording.silence_rms_threshold,
+                min_duration_ms=self.cfg.recording.min_duration_ms,
+            )
+            if silent:
+                log.info("skipping transcription: %s", reason)
+                return
+
             text = await transcribe.transcribe(self.cfg.server.url, wav_path)
             log.info("transcribed (raw): %r", text)
 

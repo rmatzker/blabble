@@ -57,3 +57,31 @@ class Recorder:
     @property
     def is_recording(self) -> bool:
         return self._stream is not None
+
+
+def is_silent(wav_path: Path, *, rms_threshold: float = 200.0,
+              min_duration_ms: int = 250) -> tuple[bool, str]:
+    """Return (is_silent, reason). Used to skip transcription of accidental
+    or empty recordings — whisper.cpp hallucinates phrases like
+    '[BLANK_AUDIO]' or 'Thanks for watching!' on silent input.
+    """
+    with wave.open(str(wav_path), "rb") as wf:
+        n_frames = wf.getnframes()
+        sample_rate = wf.getframerate()
+        frames = wf.readframes(n_frames)
+
+    duration_ms = int(1000 * n_frames / sample_rate) if sample_rate else 0
+    if duration_ms < min_duration_ms:
+        return True, f"too short ({duration_ms}ms < {min_duration_ms}ms)"
+
+    if not frames:
+        return True, "empty wav"
+
+    samples = np.frombuffer(frames, dtype=np.int16)
+    if samples.size == 0:
+        return True, "no samples"
+    rms = float(np.sqrt(np.mean(samples.astype(np.float64) ** 2)))
+    if rms < rms_threshold:
+        return True, f"low energy (rms={rms:.0f} < {rms_threshold:.0f})"
+
+    return False, ""

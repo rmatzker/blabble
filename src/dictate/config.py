@@ -19,6 +19,8 @@ class RecordingConfig:
     sample_rate: int = 16000
     keep_local_copies: bool = False
     max_local_copies: int = 50
+    silence_rms_threshold: float = 200.0
+    min_duration_ms: int = 250
 
 
 @dataclass
