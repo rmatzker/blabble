@@ -45,15 +45,16 @@ def ensure_blips(start_path: Path, stop_path: Path) -> None:
         log.info("generated %s", stop_path)
 
 
-def play(path: Path) -> None:
+def play(path: Path, volume: float = 1.0) -> None:
     if not shutil.which("paplay"):
         log.warning("paplay not found, skipping sound %s", path)
         return
     if not path.exists():
         log.warning("sound file missing: %s", path)
         return
+    pa_volume = max(0, min(65536, int(volume * 65536)))
     subprocess.Popen(
-        ["paplay", str(path)],
+        ["paplay", f"--volume={pa_volume}", str(path)],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )

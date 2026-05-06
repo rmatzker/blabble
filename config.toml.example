@@ -30,6 +30,7 @@ toggle = "Meta+Space"           # initial preferred trigger; rebind anytime in S
 enabled = true
 start = "auto"                  # "auto" = generated upward blip; or absolute path to a .wav
 stop  = "auto"                  # "auto" = generated downward blip
+volume = 0.5                    # 0.0 = silent, 1.0 = file's baked-in level (~15% amplitude); applied via paplay --volume
 
 [paste]
 method = "clipboard"            # "clipboard" (wl-copy + ydotool Ctrl+Shift+V — fastest, replaces clipboard)

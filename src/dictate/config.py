@@ -47,6 +47,7 @@ class SoundsConfig:
     enabled: bool = True
     start: str = "auto"
     stop: str = "auto"
+    volume: float = 0.5
 
 
 @dataclass

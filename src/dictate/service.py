@@ -117,7 +117,7 @@ class DictateService:
     async def _start(self) -> None:
         try:
             if self.cfg.sounds.enabled:
-                sounds.play(self.start_sound)
+                sounds.play(self.start_sound, self.cfg.sounds.volume)
             self.recorder.start()
             self.recording = True
             if self.tray:
@@ -149,7 +149,7 @@ class DictateService:
             if self.tray:
                 self.tray.set_state("idle")
             if self.cfg.sounds.enabled:
-                sounds.play(self.stop_sound)
+                sounds.play(self.stop_sound, self.cfg.sounds.volume)
 
             self.recorder.stop(wav_path)
             log.info("recording saved: %s", wav_path)
