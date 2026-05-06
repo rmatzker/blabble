@@ -20,10 +20,11 @@ WATCHER_IFACE = "org.kde.StatusNotifierWatcher"
 
 
 class StatusNotifierItem(ServiceInterface):
-    def __init__(self, idle_icon: str, recording_icon: str):
+    def __init__(self, idle_icon: str, recording_icon: str, menu_path: str = "/NoMenu"):
         super().__init__(SNI_IFACE)
         self._idle_icon = idle_icon
         self._recording_icon = recording_icon
+        self._menu_path = menu_path
         self._state = "idle"
         self._tooltip_title = "dictate · idle"
         self.on_activate: Callable[[], None] | None = None
@@ -97,7 +98,7 @@ class StatusNotifierItem(ServiceInterface):
 
     @dbus_property(access=PropertyAccess.READ)
     def Menu(self) -> "o":
-        return "/NoMenu"
+        return self._menu_path
 
     @dbus_property(access=PropertyAccess.READ)
     def WindowId(self) -> "u":

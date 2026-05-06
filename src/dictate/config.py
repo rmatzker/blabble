@@ -1,3 +1,4 @@
+import re
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -32,6 +33,7 @@ class RecordingConfig:
     max_local_copies: int = 50
     silence_rms_threshold: float = 200.0
     min_duration_ms: int = 250
+    max_duration_sec: int = 300
     discard_if_matches: list[str] = field(default_factory=lambda: list(DEFAULT_HALLUCINATION_PATTERNS))
 
 
@@ -94,3 +96,19 @@ def load(path: Path = CONFIG_PATH) -> Config:
         tray=TrayConfig(**raw.get("tray", {})),
         transformations=[TransformationCfg(**t) for t in raw.get("transformations", [])],
     )
+
+
+def update_press_enter_after(value: bool, path: Path = CONFIG_PATH) -> None:
+    """Rewrite press_enter_after in config.toml without touching comments or other keys."""
+    if not path.exists():
+        return
+    text = path.read_text()
+    new_value = "true" if value else "false"
+    pattern = re.compile(r"^(\s*press_enter_after\s*=\s*)(?:true|false)(.*)$", re.MULTILINE)
+    new_text, n = pattern.subn(rf"\g<1>{new_value}\g<2>", text)
+    if n == 0:
+        if "[paste]" in new_text:
+            new_text = new_text.replace("[paste]", f"[paste]\npress_enter_after = {new_value}", 1)
+        else:
+            new_text = new_text.rstrip() + f"\n\n[paste]\npress_enter_after = {new_value}\n"
+    path.write_text(new_text)

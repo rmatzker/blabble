@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import re
 import signal as posix_signal
 import sys
@@ -12,6 +13,7 @@ from dbus_next.aio import MessageBus
 from . import config as config_mod
 from . import paste, recorder, sounds, transcribe, transform
 from .hotkey import GlobalShortcuts
+from .menu import MENU_PATH, DBusMenu, MenuItem
 from .tray import StatusNotifierItem, register_with_watcher
 
 log = logging.getLogger(__name__)
@@ -28,7 +30,9 @@ class DictateService:
         self.start_sound = self._resolve_sound(cfg.sounds.start, "start.wav")
         self.stop_sound = self._resolve_sound(cfg.sounds.stop, "stop.wav")
         self.tray: StatusNotifierItem | None = None
+        self.menu: DBusMenu | None = None
         self._lock = asyncio.Lock()
+        self._watchdog: asyncio.Task | None = None
 
     def _resolve_sound(self, value: str, default_name: str) -> Path:
         if value == "auto":
@@ -44,9 +48,27 @@ class DictateService:
         bus = await MessageBus(bus_type=BusType.SESSION).connect()
 
         if self.cfg.tray.enabled:
+            self.menu = DBusMenu([
+                MenuItem(
+                    id=1,
+                    label="Auto-Enter after paste",
+                    toggle_type="checkmark",
+                    get_toggle_state=lambda: self.cfg.paste.press_enter_after,
+                    on_click=self._toggle_press_enter,
+                ),
+                MenuItem(id=2, item_type="separator"),
+                MenuItem(
+                    id=3,
+                    label="Quit",
+                    on_click=self._quit_action,
+                ),
+            ])
+            bus.export(MENU_PATH, self.menu)
+
             self.tray = StatusNotifierItem(
                 idle_icon=self.cfg.tray.icon_idle,
                 recording_icon=self.cfg.tray.icon_recording,
+                menu_path=MENU_PATH,
             )
             self.tray.on_activate = lambda: asyncio.create_task(self.toggle())
             await register_with_watcher(bus, self.tray)
@@ -77,6 +99,21 @@ class DictateService:
             else:
                 await self._start()
 
+    async def _toggle_press_enter(self) -> None:
+        new_value = not self.cfg.paste.press_enter_after
+        self.cfg.paste.press_enter_after = new_value
+        log.info("press_enter_after toggled via tray menu: %s", new_value)
+        try:
+            config_mod.update_press_enter_after(new_value)
+        except Exception:
+            log.exception("failed to persist press_enter_after to config.toml")
+        if self.menu:
+            self.menu.notify_toggle_changed(1)
+
+    async def _quit_action(self) -> None:
+        log.info("quit requested via tray menu")
+        os.kill(os.getpid(), posix_signal.SIGTERM)
+
     async def _start(self) -> None:
         try:
             if self.cfg.sounds.enabled:
@@ -86,16 +123,29 @@ class DictateService:
             if self.tray:
                 self.tray.set_state("recording")
             log.info("recording started")
+            if self.cfg.recording.max_duration_sec > 0:
+                self._watchdog = asyncio.create_task(self._auto_stop_after(self.cfg.recording.max_duration_sec))
         except Exception:
             log.exception("start failed")
             self.recording = False
             if self.tray:
                 self.tray.set_state("idle")
 
+    async def _auto_stop_after(self, seconds: int) -> None:
+        try:
+            await asyncio.sleep(seconds)
+        except asyncio.CancelledError:
+            return
+        log.warning("recording exceeded max_duration_sec=%ds, auto-stopping", seconds)
+        await self.toggle()
+
     async def _stop(self) -> None:
         wav_path = self._wav_path()
         try:
             self.recording = False
+            if self._watchdog and not self._watchdog.done():
+                self._watchdog.cancel()
+            self._watchdog = None
             if self.tray:
                 self.tray.set_state("idle")
             if self.cfg.sounds.enabled:
