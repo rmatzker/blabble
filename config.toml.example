@@ -44,6 +44,15 @@ icon_idle = "audio-input-microphone"
 icon_recording = "media-record"
 
 # Transformations run in order on the transcribed text before paste.
+# Glue contractions back together when whisper.cpp wraps a segment between the
+# stem and its apostrophe-suffix (e.g. "don\n't" → "don 't" without this rule).
+# Must run BEFORE strip-newlines so the lookahead still sees the apostrophe.
+[[transformations]]
+name = "glue contractions"
+find = "\\s*\\n+\\s*(?='[a-zA-Z])"
+replace = ""
+regex = true
+
 # Strip whisper.cpp's per-segment newlines (the contraction-split fix).
 [[transformations]]
 name = "strip newlines"
