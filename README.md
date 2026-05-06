@@ -2,7 +2,7 @@
 
 Local-first voice dictation client. Press a hotkey, speak, get text typed at your cursor.
 
-Points at a self-hosted whisper.cpp endpoint. Built for KDE Plasma 6 + Wayland on CachyOS.
+Points at a self-hosted whisper.cpp endpoint. First-class on Linux (KDE Plasma 6 / Wayland); Windows support added in v0.2 (macOS planned).
 
 ## What it does
 
@@ -34,6 +34,28 @@ That:
 - Installs the systemd user unit and enables `dictate.service`.
 
 On first start KDE shows a portal dialog: confirm `Meta+Space`. After that the binding lives in KWin's settings — re-bind whenever via *System Settings → Shortcuts → search "dictate."*
+
+### Windows
+
+Tested on Windows 11 with Python 3.13.
+
+```powershell
+git clone https://github.com/rmatzker/dictate.git
+cd dictate
+py -3.13 -m venv .venv
+.venv\Scripts\pip install -e .
+.venv\Scripts\python -m dictate
+```
+
+Dependencies install automatically via platform markers (`pynput`, `pyperclip`, `pystray`, `pillow`, `sounddevice`).
+
+Defaults on Windows:
+- Hotkey: `Ctrl+Shift+Space` (configurable in `%APPDATA%\dictate\config.toml`)
+- Config: `%APPDATA%\dictate\config.toml`
+- Data: `%LOCALAPPDATA%\dictate\` (sounds, optional recordings)
+- Tray: red dot when recording, gray otherwise
+
+To autostart at login, drop a shortcut to `pythonw.exe -m dictate` (use `pythonw`, not `python`, to suppress the console window) into `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`.
 
 ## Config
 

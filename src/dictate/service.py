@@ -28,6 +28,7 @@ class DictateService:
         self.backend: Backend | None = None
         self._lock = asyncio.Lock()
         self._watchdog: asyncio.Task | None = None
+        self._shutdown: asyncio.Future | None = None
 
     def _resolve_sound(self, value: str, default_name: str) -> Path:
         if value == "auto":
@@ -74,8 +75,10 @@ class DictateService:
 
         log.info("dictate ready (hotkey=%s)", self.cfg.hotkey.toggle)
 
-        await _wait_for_shutdown_signal()
-        log.info("shutdown signal received")
+        self._shutdown = asyncio.get_event_loop().create_future()
+        _install_signal_handlers(self._shutdown)
+        await self._shutdown
+        log.info("shutdown requested")
         if self.backend.shutdown is not None:
             try:
                 await self.backend.shutdown()
@@ -102,7 +105,8 @@ class DictateService:
 
     async def _quit_action(self) -> None:
         log.info("quit requested via tray menu")
-        os.kill(os.getpid(), signal_mod.SIGTERM)
+        if self._shutdown is not None and not self._shutdown.done():
+            self._shutdown.set_result(None)
 
     async def _start(self) -> None:
         try:
@@ -199,35 +203,26 @@ class DictateService:
             f.unlink(missing_ok=True)
 
 
-async def _wait_for_shutdown_signal() -> None:
-    """Block until SIGINT/SIGTERM. Falls back to signal.signal() on Windows
-    where loop.add_signal_handler is unsupported."""
+def _install_signal_handlers(shutdown: asyncio.Future) -> None:
+    """Wire SIGINT/SIGTERM to set the shutdown future. Uses asyncio's
+    add_signal_handler on POSIX, signal.signal() on Windows (where the
+    asyncio API raises NotImplementedError)."""
     loop = asyncio.get_event_loop()
-    stop = loop.create_future()
 
     def _set():
-        if not stop.done():
-            stop.set_result(None)
+        if not shutdown.done():
+            shutdown.set_result(None)
 
     sigs = (signal_mod.SIGINT, signal_mod.SIGTERM)
     if sys.platform == "win32":
-        # add_signal_handler raises NotImplementedError on Windows ProactorEventLoop.
-        # signal.signal() works but only fires between bytecode instructions, so we
-        # also poll periodically as a safety net.
         for sig in sigs:
             try:
                 signal_mod.signal(sig, lambda *_: loop.call_soon_threadsafe(_set))
             except (ValueError, OSError):
                 pass
-        while not stop.done():
-            try:
-                await asyncio.wait_for(asyncio.shield(stop), timeout=0.5)
-            except asyncio.TimeoutError:
-                continue
     else:
         for sig in sigs:
             loop.add_signal_handler(sig, _set)
-        await stop
 
 
 def main() -> None:

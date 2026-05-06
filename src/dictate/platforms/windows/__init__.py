@@ -1,21 +1,32 @@
-"""Windows backend stub. Implementation lands in v0.2 Phase B.
+"""Windows backend: pynput hotkey + pyperclip/pynput paste + pystray + sounddevice.
 
-Planned libraries:
-- pynput      → global hotkey + Ctrl+V synthesis
-- pyperclip   → clipboard set
-- pystray     → tray icon + menu
-- winsound    → blip playback (or reuse sounddevice for consistency)
+Autostart: drop a .lnk into
+%APPDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup pointing at
+`pythonw.exe -m dictate` (or the PyInstaller .exe). pythonw avoids the
+console window flash; -m dictate still works.
 
-Autostart: drop a .lnk into the Startup folder
-(%APPDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup).
-
-Packaging: PyInstaller --windowed --onefile (avoids console flash).
+Packaging (future): PyInstaller --windowed --onefile.
 """
 from ..base import Backend
+from .hotkey import PynputHotkey
+from .paste import WindowsPaste
+from .sounds import SounddeviceSounds
+from .tray import PystrayTray
 
 
 async def create_backend(cfg) -> Backend:
-    raise NotImplementedError(
-        "Windows backend is not yet implemented (planned for v0.2 Phase B). "
-        "See platforms/windows/__init__.py for the design notes."
+    tray = PystrayTray() if cfg.tray.enabled else None
+    hotkey = PynputHotkey()
+
+    async def _shutdown() -> None:
+        hotkey.stop()
+        if tray is not None:
+            tray.stop()
+
+    return Backend(
+        sounds=SounddeviceSounds(),
+        paste=WindowsPaste(),
+        hotkey=hotkey,
+        tray=tray,
+        shutdown=_shutdown,
     )
