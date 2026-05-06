@@ -4,15 +4,29 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dictate"
-version = "0.1.0"
-description = "Local-first voice dictation client for whisper.cpp"
+version = "0.2.0.dev0"
+description = "Local-first voice dictation client for whisper.cpp (multi-platform)"
 requires-python = ">=3.13"
+# Core deps are cross-platform. OS-coupled libraries live in the
+# matching extra below and install automatically via platform markers.
 dependencies = [
     "sounddevice>=0.4.6",
     "httpx>=0.27.0",
     "numpy>=1.26",
-    "dbus-next>=0.2.3",
+    "dbus-next>=0.2.3 ; sys_platform == 'linux'",
+    "pynput>=1.7.7 ; sys_platform == 'win32' or sys_platform == 'darwin'",
+    "pyperclip>=1.8.2 ; sys_platform == 'win32' or sys_platform == 'darwin'",
+    "pystray>=0.19.5 ; sys_platform == 'win32'",
+    "pillow>=10.0 ; sys_platform == 'win32'",
+    "rumps>=0.4.0 ; sys_platform == 'darwin'",
 ]
+
+# Explicit extras let you install the platform deps from a sdist on a
+# platform that doesn't match the markers (e.g., cross-building wheels).
+[project.optional-dependencies]
+linux = ["dbus-next>=0.2.3"]
+windows = ["pynput>=1.7.7", "pyperclip>=1.8.2", "pystray>=0.19.5", "pillow>=10.0"]
+macos = ["pynput>=1.7.7", "pyperclip>=1.8.2", "rumps>=0.4.0"]
 
 [project.scripts]
 dictate = "dictate.service:main"

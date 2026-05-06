@@ -1,6 +1,9 @@
+"""Cross-platform WAV blip synthesis.
+
+Generates the start/stop tones once and writes them to disk. Playback
+is per-platform and lives in platforms/<os>/sounds.py.
+"""
 import logging
-import shutil
-import subprocess
 import wave
 from pathlib import Path
 
@@ -43,18 +46,3 @@ def ensure_blips(start_path: Path, stop_path: Path) -> None:
     if not stop_path.exists():
         _write_wav(stop_path, _gen_sweep(1000, 600))
         log.info("generated %s", stop_path)
-
-
-def play(path: Path, volume: float = 1.0) -> None:
-    if not shutil.which("paplay"):
-        log.warning("paplay not found, skipping sound %s", path)
-        return
-    if not path.exists():
-        log.warning("sound file missing: %s", path)
-        return
-    pa_volume = max(0, min(65536, int(volume * 65536)))
-    subprocess.Popen(
-        ["paplay", f"--volume={pa_volume}", str(path)],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )

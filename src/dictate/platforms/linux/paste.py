@@ -1,3 +1,4 @@
+"""Linux paste via wl-copy + ydotool (or ydotool/wtype direct typing)."""
 import asyncio
 import logging
 import shutil
@@ -5,36 +6,31 @@ import shutil
 log = logging.getLogger(__name__)
 
 
-async def paste_at_cursor(
-    text: str, *, method: str = "clipboard", press_enter_after: bool = False
-) -> None:
-    """Deliver text to the focused cursor.
+class WaylandPaste:
+    def __init__(self, method: str = "clipboard"):
+        # method:
+        #   "clipboard" — wl-copy + ydotool Ctrl+Shift+V (fastest, lossless)
+        #   "ydotool"   — type char-by-char via uinput (drops chars at low key-delay on KWin)
+        #   "wtype"     — wlroots compositors only (KWin lacks zwp_virtual_keyboard_v1)
+        self.method = method
 
-    method:
-      - "clipboard": wl-copy the text + ydotool simulates Ctrl+Shift+V.
-        Fastest and lossless regardless of length. Replaces clipboard contents.
-      - "ydotool":   ydotool types char-by-char via uinput. At delays <12ms
-        on KWin, release events get coalesced and characters (often spaces)
-        drop on long strings.
-      - "wtype":     wtype on wlroots compositors only — KWin lacks
-        zwp_virtual_keyboard_v1.
-    """
-    if not text:
-        return
+    async def paste_text(self, text: str, *, press_enter_after: bool = False) -> None:
+        if not text:
+            return
 
-    ok = False
-    if method == "clipboard":
-        ok = await _paste_clipboard(text)
-    elif method == "ydotool":
-        ok = await _type_ydotool(text)
-    elif method == "wtype":
-        ok = await _type_wtype(text)
-    else:
-        log.error("unknown paste method: %s", method)
-        return
+        ok = False
+        if self.method == "clipboard":
+            ok = await _paste_clipboard(text)
+        elif self.method == "ydotool":
+            ok = await _type_ydotool(text)
+        elif self.method == "wtype":
+            ok = await _type_wtype(text)
+        else:
+            log.error("unknown paste method: %s", self.method)
+            return
 
-    if ok and press_enter_after:
-        await _press_enter()
+        if ok and press_enter_after:
+            await _press_enter()
 
 
 async def _press_enter() -> None:

@@ -1,12 +1,54 @@
+import os
 import re
+import sys
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
-CONFIG_PATH = Path.home() / ".config" / "dictate" / "config.toml"
-LOCAL_DATA = Path.home() / ".local" / "share" / "dictate"
+
+def _platform_paths() -> tuple[Path, Path]:
+    """(config_dir, data_dir) per OS, following each platform's convention."""
+    home = Path.home()
+    if sys.platform == "win32":
+        appdata = Path(os.environ.get("APPDATA", home / "AppData" / "Roaming"))
+        local = Path(os.environ.get("LOCALAPPDATA", home / "AppData" / "Local"))
+        return appdata / "dictate", local / "dictate"
+    if sys.platform == "darwin":
+        base = home / "Library" / "Application Support" / "dictate"
+        return base, base
+    # Linux / other POSIX
+    xdg_config = Path(os.environ.get("XDG_CONFIG_HOME", home / ".config"))
+    xdg_data = Path(os.environ.get("XDG_DATA_HOME", home / ".local" / "share"))
+    return xdg_config / "dictate", xdg_data / "dictate"
+
+
+CONFIG_DIR, LOCAL_DATA = _platform_paths()
+CONFIG_PATH = CONFIG_DIR / "config.toml"
 SOUNDS_DIR = LOCAL_DATA / "sounds"
 RECORDINGS_DIR = LOCAL_DATA / "recordings"
+
+
+def _default_hotkey() -> str:
+    if sys.platform == "win32":
+        # Win+Space is taken by Windows IME switcher; Ctrl+Shift+Space is free.
+        return "Ctrl+Shift+Space"
+    if sys.platform == "darwin":
+        # Cmd+Space is Spotlight; Ctrl+Shift+Space avoids the system grabs.
+        return "Ctrl+Shift+Space"
+    # Linux: Meta+Space is the existing default and is portal-managed by KDE.
+    return "Meta+Space"
+
+
+def _default_recording_device() -> str:
+    # Linux uses PulseAudio's "pulse" device explicitly; Win/Mac let
+    # sounddevice pick the system default (empty string = default).
+    return "pulse" if sys.platform.startswith("linux") else ""
+
+
+def _default_paste_method() -> str:
+    # Only meaningful on Linux today (clipboard/ydotool/wtype). Win/Mac
+    # backends ignore this field — they have one canonical paste path.
+    return "clipboard"
 
 
 @dataclass
@@ -27,7 +69,7 @@ DEFAULT_HALLUCINATION_PATTERNS = [
 
 @dataclass
 class RecordingConfig:
-    device: str = "pulse"
+    device: str = field(default_factory=_default_recording_device)
     sample_rate: int = 16000
     keep_local_copies: bool = False
     max_local_copies: int = 50
@@ -39,7 +81,7 @@ class RecordingConfig:
 
 @dataclass
 class HotkeyConfig:
-    toggle: str = "Meta+Space"
+    toggle: str = field(default_factory=_default_hotkey)
 
 
 @dataclass
@@ -52,7 +94,7 @@ class SoundsConfig:
 
 @dataclass
 class PasteConfig:
-    method: str = "clipboard"
+    method: str = field(default_factory=_default_paste_method)
     press_enter_after: bool = False
 
 

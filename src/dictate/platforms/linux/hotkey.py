@@ -6,12 +6,13 @@ and reconfigurable in System Settings → Shortcuts.
 import asyncio
 import logging
 import secrets
-from collections.abc import Awaitable, Callable
 from typing import Any
 
-from dbus_next import BusType, Message, MessageType, Variant
+from dbus_next import Message, MessageType, Variant
 from dbus_next import introspection as intr
 from dbus_next.aio import MessageBus
+
+from ..base import AsyncCallback, ShortcutSpec
 
 log = logging.getLogger(__name__)
 
@@ -62,23 +63,16 @@ _PORTAL_INTROSPECTION_XML = """
 </node>
 """
 
-ShortcutCallback = Callable[[], Awaitable[None]]
 
-
-class GlobalShortcuts:
+class PortalHotkey:
     def __init__(self, bus: MessageBus):
         self.bus = bus
         self.session_handle: str | None = None
         self._pending_requests: dict[str, asyncio.Future] = {}
-        self._activated_callbacks: dict[str, ShortcutCallback] = {}
+        self._activated_callbacks: dict[str, AsyncCallback] = {}
         self._gs_iface = None
 
-    async def setup(self, shortcuts: list[dict[str, str]]) -> None:
-        """Register shortcuts. Each entry: {id, description, preferred_trigger}.
-
-        ``preferred_trigger`` is the initial keybinding suggestion (e.g. "Meta+Space").
-        Once registered KDE remembers any user override across sessions.
-        """
+    async def setup(self, shortcuts: list[ShortcutSpec]) -> None:
         await self._add_match(
             f"type='signal',interface='{REQUEST_IFACE}',member='Response'"
         )
@@ -94,16 +88,16 @@ class GlobalShortcuts:
 
         existing = await self._list_shortcuts()
         existing_ids = {sid for sid, _ in existing}
-        missing = [s for s in shortcuts if s["id"] not in existing_ids]
+        missing = [s for s in shortcuts if s.id not in existing_ids]
 
         if missing:
             await self._bind_shortcuts(missing)
-            log.info("shortcuts bound (new): %s", [s["id"] for s in missing])
+            log.info("shortcuts bound (new): %s", [s.id for s in missing])
         else:
             log.info("shortcuts already bound from prior session: %s",
-                     [s["id"] for s in shortcuts])
+                     [s.id for s in shortcuts])
 
-    def on_shortcut(self, shortcut_id: str, callback: ShortcutCallback) -> None:
+    def on_shortcut(self, shortcut_id: str, callback: AsyncCallback) -> None:
         self._activated_callbacks[shortcut_id] = callback
 
     async def _add_match(self, rule: str) -> None:
@@ -180,15 +174,15 @@ class GlobalShortcuts:
             return []
         return [(sid, props) for sid, props in shortcuts_var.value]
 
-    async def _bind_shortcuts(self, shortcuts: list[dict[str, str]]) -> None:
+    async def _bind_shortcuts(self, shortcuts: list[ShortcutSpec]) -> None:
         binding = []
         for s in shortcuts:
             opts: dict[str, Variant] = {
-                "description": Variant("s", s.get("description", s["id"])),
+                "description": Variant("s", s.description or s.id),
             }
-            if s.get("preferred_trigger"):
-                opts["preferred_trigger"] = Variant("s", s["preferred_trigger"])
-            binding.append([s["id"], opts])
+            if s.preferred_trigger:
+                opts["preferred_trigger"] = Variant("s", s.preferred_trigger)
+            binding.append([s.id, opts])
 
         opts = {"handle_token": Variant("s", secrets.token_hex(8))}
         request_path = await self._gs_iface.call_bind_shortcuts(
