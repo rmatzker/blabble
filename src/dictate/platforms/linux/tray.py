@@ -150,23 +150,33 @@ def _item_props(item: MenuItemSpec, requested: list[str] | None) -> dict[str, Va
 
 
 class _StatusNotifierItem(ServiceInterface):
-    def __init__(self, idle_icon: str, recording_icon: str):
+    def __init__(self, idle_icon: str, recording_icon: str, error_icon: str):
         super().__init__(SNI_IFACE)
         self._idle_icon = idle_icon
         self._recording_icon = recording_icon
+        self._error_icon = error_icon
         self._state: TrayState = "idle"
         self._tooltip_title = "dictate · idle"
         self.on_activate: Callable[[], None] | None = None
 
     def set_state(self, state: TrayState) -> None:
         self._state = state
-        self._tooltip_title = "dictate · recording" if state == "recording" else "dictate · idle"
+        if state == "recording":
+            self._tooltip_title = "dictate · recording"
+        elif state == "error":
+            self._tooltip_title = "dictate · transcription failed"
+        else:
+            self._tooltip_title = "dictate · idle"
         self.NewIcon()
         self.NewToolTip()
 
     @property
     def _current_icon(self) -> str:
-        return self._recording_icon if self._state == "recording" else self._idle_icon
+        if self._state == "recording":
+            return self._recording_icon
+        if self._state == "error":
+            return self._error_icon
+        return self._idle_icon
 
     @dbus_property(access=PropertyAccess.READ)
     def Category(self) -> "s":
@@ -271,9 +281,9 @@ class _StatusNotifierItem(ServiceInterface):
 
 
 class SniTray:
-    def __init__(self, bus: MessageBus, idle_icon: str, recording_icon: str):
+    def __init__(self, bus: MessageBus, idle_icon: str, recording_icon: str, error_icon: str):
         self._bus = bus
-        self._sni = _StatusNotifierItem(idle_icon, recording_icon)
+        self._sni = _StatusNotifierItem(idle_icon, recording_icon, error_icon)
         self._menu: _DBusMenu | None = None
 
     async def setup(

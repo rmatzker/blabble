@@ -86,11 +86,17 @@ class DictateService:
                 log.exception("backend shutdown failed")
 
     async def toggle(self) -> None:
+        # The lock only guards the start/stop *transition* — not the
+        # transcription that follows a stop. Otherwise a hung backend
+        # would block the hotkey for the full read timeout.
         async with self._lock:
             if self.recording:
-                await self._stop()
+                wav_path = await self._stop_recording()
             else:
                 await self._start()
+                return
+        if wav_path is not None:
+            await self._transcribe_and_paste(wav_path)
 
     async def _toggle_press_enter(self) -> None:
         new_value = not self.cfg.paste.press_enter_after
@@ -133,7 +139,10 @@ class DictateService:
         log.warning("recording exceeded max_duration_sec=%ds, auto-stopping", seconds)
         await self.toggle()
 
-    async def _stop(self) -> None:
+    async def _stop_recording(self) -> Path | None:
+        """End the current recording and return the WAV path to transcribe,
+        or None if there's nothing to send (silence, or recorder failure).
+        Runs under the toggle lock — keep it fast."""
         wav_path = self._wav_path()
         try:
             self.recording = False
@@ -155,9 +164,27 @@ class DictateService:
             )
             if silent:
                 log.info("skipping transcription: %s", reason)
-                return
+                self._cleanup_wav(wav_path)
+                return None
+            return wav_path
+        except Exception:
+            log.exception("stop failed")
+            self._cleanup_wav(wav_path)
+            return None
 
-            text = await transcribe.transcribe(self.cfg.server.url, wav_path)
+    async def _transcribe_and_paste(self, wav_path: Path) -> None:
+        """Sent the WAV to the backend, transform the result, and paste.
+        Runs *outside* the toggle lock so a hung/unreachable backend doesn't
+        block the hotkey."""
+        keep_on_success = True
+        try:
+            text = await transcribe.transcribe(
+                self.cfg.server.url,
+                wav_path,
+                connect_timeout=self.cfg.server.connect_timeout,
+                read_timeout=self.cfg.server.read_timeout,
+                retries=self.cfg.server.retries,
+            )
             log.info("transcribed (raw): %r", text)
 
             steps = [
@@ -173,17 +200,58 @@ class DictateService:
                     return
 
             if text:
+                # When auto-enter is off, append a trailing space so back-to-back
+                # dictations don't run together (we have no way to inspect the
+                # cursor's surroundings before pasting). Enter mode handles the
+                # separation itself, so no space needed there.
+                if not self.cfg.paste.press_enter_after and not text.endswith((" ", "\t", "\n")):
+                    text = text + " "
                 await self.backend.paste.paste_text(
                     text,
                     press_enter_after=self.cfg.paste.press_enter_after,
                 )
-        except Exception:
-            log.exception("stop failed")
+        except Exception as e:
+            log.exception("transcription/paste failed")
+            keep_on_success = False
+            self._preserve_failed_wav(wav_path, reason=type(e).__name__)
+            self._signal_error()
         finally:
-            if not self.cfg.recording.keep_local_copies:
-                wav_path.unlink(missing_ok=True)
-            else:
-                self._enforce_max_copies()
+            if keep_on_success:
+                self._cleanup_wav(wav_path)
+
+    def _cleanup_wav(self, wav_path: Path) -> None:
+        if not self.cfg.recording.keep_local_copies:
+            wav_path.unlink(missing_ok=True)
+        else:
+            self._enforce_max_copies()
+
+    def _preserve_failed_wav(self, wav_path: Path, *, reason: str) -> None:
+        """Move a WAV whose transcription failed into a ``failed/`` dir under
+        the recordings location so the user doesn't lose their dictation."""
+        try:
+            failed_dir = config_mod.RECORDINGS_DIR / "failed"
+            failed_dir.mkdir(parents=True, exist_ok=True)
+            dest = failed_dir / wav_path.name
+            wav_path.replace(dest)
+            log.warning("preserved failed recording (%s): %s", reason, dest)
+        except Exception:
+            log.exception("could not preserve failed WAV; deleting")
+            wav_path.unlink(missing_ok=True)
+
+    def _signal_error(self) -> None:
+        if not self.backend or not self.backend.tray:
+            return
+        self.backend.tray.set_state("error")
+        asyncio.create_task(self._clear_error_after(5.0))
+
+    async def _clear_error_after(self, seconds: float) -> None:
+        try:
+            await asyncio.sleep(seconds)
+        except asyncio.CancelledError:
+            return
+        # Only clear if we're not mid-recording — don't stomp a fresh start.
+        if not self.recording and self.backend and self.backend.tray:
+            self.backend.tray.set_state("idle")
 
     def _wav_path(self) -> Path:
         if self.cfg.recording.keep_local_copies:

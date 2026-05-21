@@ -14,14 +14,18 @@ async def create_backend(cfg) -> Backend:
 
     tray = None
     if cfg.tray.enabled:
-        tray = SniTray(bus, cfg.tray.icon_idle, cfg.tray.icon_recording)
+        tray = SniTray(bus, cfg.tray.icon_idle, cfg.tray.icon_recording, cfg.tray.icon_error)
 
     async def _shutdown() -> None:
         bus.disconnect()
 
     return Backend(
         sounds=PaplaySounds(),
-        paste=WaylandPaste(method=cfg.paste.method),
+        paste=WaylandPaste(
+            method=cfg.paste.method,
+            restore_clipboard=cfg.paste.restore_clipboard,
+            restore_delay_ms=cfg.paste.restore_delay_ms,
+        ),
         hotkey=PortalHotkey(bus),
         tray=tray,
         shutdown=_shutdown,

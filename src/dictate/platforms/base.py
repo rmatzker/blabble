@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Literal, Protocol, runtime_checkable
 
 AsyncCallback = Callable[[], Awaitable[None]]
-TrayState = Literal["idle", "recording"]
+TrayState = Literal["idle", "recording", "error"]
 
 
 @dataclass

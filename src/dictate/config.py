@@ -54,6 +54,9 @@ def _default_paste_method() -> str:
 @dataclass
 class ServerConfig:
     url: str = "http://localhost:8080"
+    connect_timeout: float = 3.0      # fail fast if backend is unreachable
+    read_timeout: float = 60.0        # how long to wait for transcription
+    retries: int = 1                  # extra attempts on transient errors (0 = no retry)
 
 
 DEFAULT_HALLUCINATION_PATTERNS = [
@@ -96,6 +99,8 @@ class SoundsConfig:
 class PasteConfig:
     method: str = field(default_factory=_default_paste_method)
     press_enter_after: bool = False
+    restore_clipboard: bool = True
+    restore_delay_ms: int = 400
 
 
 @dataclass
@@ -103,6 +108,7 @@ class TrayConfig:
     enabled: bool = True
     icon_idle: str = "audio-input-microphone"
     icon_recording: str = "media-record"
+    icon_error: str = "dialog-warning"
 
 
 @dataclass

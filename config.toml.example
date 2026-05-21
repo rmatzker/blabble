@@ -2,6 +2,9 @@
 
 [server]
 url = "http://localhost:8080"
+connect_timeout = 3.0           # seconds before giving up on an unreachable backend
+read_timeout = 60.0             # seconds to wait for transcription response
+retries = 1                     # extra attempts on transient errors (connect/read timeout, HTTP 5xx); 0 disables
 
 [recording]
 device = "pulse"
@@ -37,11 +40,14 @@ method = "clipboard"            # "clipboard" (wl-copy + ydotool Ctrl+Shift+V â€
                                 # "ydotool"   (types char-by-char; drops chars at low key-delay on KWin)
                                 # "wtype"     (wlroots compositors only)
 press_enter_after = false       # if true, send Enter after the paste (saves the keystroke when dictating into chat/prompts)
+restore_clipboard = true        # snapshot the clipboard before paste, restore it after, so dictation doesn't wipe what you copied
+restore_delay_ms = 400          # how long to wait after the paste chord before restoring (target app must consume the paste first)
 
 [tray]
 enabled = true
 icon_idle = "audio-input-microphone"
 icon_recording = "media-record"
+icon_error = "dialog-warning"   # shown briefly when transcription fails (Linux freedesktop icon name; Windows uses a built-in amber dot)
 
 # Transformations run in order on the transcribed text before paste.
 # Glue contractions back together when whisper.cpp wraps a segment between the

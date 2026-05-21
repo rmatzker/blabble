@@ -28,6 +28,7 @@ def _make_icon(color: tuple[int, int, int]) -> Image.Image:
 
 _IDLE_IMAGE = _make_icon((140, 140, 140))      # gray
 _RECORDING_IMAGE = _make_icon((220, 50, 50))   # red
+_ERROR_IMAGE = _make_icon((230, 160, 30))      # amber
 
 
 class PystrayTray:
@@ -95,8 +96,15 @@ class PystrayTray:
         self._state = state
         if self._icon is None:
             return
-        self._icon.icon = _RECORDING_IMAGE if state == "recording" else _IDLE_IMAGE
-        self._icon.title = "dictate · recording" if state == "recording" else "dictate · idle"
+        if state == "recording":
+            self._icon.icon = _RECORDING_IMAGE
+            self._icon.title = "dictate · recording"
+        elif state == "error":
+            self._icon.icon = _ERROR_IMAGE
+            self._icon.title = "dictate · transcription failed"
+        else:
+            self._icon.icon = _IDLE_IMAGE
+            self._icon.title = "dictate · idle"
 
     def notify_menu_item_changed(self, item_id: int) -> None:
         # pystray re-evaluates `checked` lambdas when the menu reopens

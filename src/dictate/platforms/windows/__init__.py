@@ -25,7 +25,10 @@ async def create_backend(cfg) -> Backend:
 
     return Backend(
         sounds=SounddeviceSounds(),
-        paste=WindowsPaste(),
+        paste=WindowsPaste(
+            restore_clipboard=cfg.paste.restore_clipboard,
+            restore_delay_ms=cfg.paste.restore_delay_ms,
+        ),
         hotkey=hotkey,
         tray=tray,
         shutdown=_shutdown,
