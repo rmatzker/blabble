@@ -2,29 +2,106 @@
 
 Local-first voice dictation client. Press a hotkey, speak, get text typed at your cursor.
 
-Points at a self-hosted whisper.cpp endpoint. First-class on Linux (KDE Plasma 6 / Wayland); Windows support added in v0.2 (macOS planned).
+Points at a self-hosted [whisper.cpp](https://github.com/ggerganov/whisper.cpp) HTTP endpoint. First-class on Linux (KDE Plasma 6 / Wayland); Windows support added in v0.2 (macOS planned).
 
-## What it does
+## How it works
 
-1. Press `Meta+Space` (configurable in System Settings → Shortcuts).
+```
+   ┌──────────────────┐    audio (WAV)    ┌────────────────────┐
+   │ dictate (client) │ ────────────────► │ whisper.cpp server │
+   │  hotkey + mic    │ ◄──────────────── │   (your machine    │
+   │  + text paste    │   transcribed     │    or a homelab)   │
+   └──────────────────┘      text         └────────────────────┘
+```
+
+1. Press `Meta+Space` (Linux) / `Ctrl+Shift+Space` (Windows). Configurable.
 2. A short upward blip plays. Recording starts. Tray icon turns red.
-3. Press `Meta+Space` again. Downward blip. Recording stops.
-4. Audio uploads to `localhost`. Whisper.cpp transcribes.
-5. Optional regex transformations clean up the text (e.g. strip per-segment newlines).
-6. Text is typed at the focused cursor via `wtype`.
+3. Press the hotkey again. Downward blip. Recording stops.
+4. The WAV is uploaded to your whisper.cpp `/inference` endpoint.
+5. Optional regex transformations clean up the text (e.g. strip per-segment newlines, glue split contractions).
+6. Text is pasted at the focused cursor (via `wtype` / `wl-copy` on Linux, or the Windows clipboard).
 
 No toast notifications. Ever. Audio cues + tray icon convey state.
 
-## Requirements
+---
 
-- Plasma 6 / Wayland, KDE GlobalShortcuts portal (you have this)
-- `wtype` (typing simulation): `sudo pacman -S wtype`
-- `libpulse` (paplay for sound cues): `sudo pacman -S libpulse`
-- Python 3.13+
+## Part 1 — Set up the whisper.cpp server
 
-## Install
+The client is useless without a backend to talk to. Easiest path: build whisper.cpp on whatever machine has the most idle CPU/GPU (a desktop, a homelab box, even the same laptop), and run its bundled HTTP server.
+
+### 1. Build whisper.cpp
 
 ```bash
+git clone https://github.com/ggerganov/whisper.cpp.git
+cd whisper.cpp
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j --config Release
+```
+
+For CUDA acceleration add `-DGGML_CUDA=1`; for Apple Silicon Metal is on by default; for Vulkan add `-DGGML_VULKAN=1`. CPU-only is fine for the smaller models.
+
+### 2. Download a model
+
+```bash
+./models/download-ggml-model.sh large-v3-turbo
+```
+
+Recommendations:
+- **`large-v3-turbo`** — best balance of speed and accuracy. ~1.5 GB. What this project is tuned for.
+- **`medium.en`** — English-only, decent on modest CPUs.
+- **`base.en`** — fastest, lower accuracy. Fine for short utterances.
+
+Models land in `models/ggml-<name>.bin`.
+
+### 3. Run the HTTP server
+
+```bash
+./build/bin/whisper-server \
+    --host 0.0.0.0 \
+    --port 8080 \
+    --model models/ggml-large-v3-turbo.bin
+```
+
+That exposes an OpenAI-compatible endpoint at `POST http://<host>:8080/v1/audio/transcriptions` accepting `multipart/form-data` with a `file` field — which is exactly what the dictate client posts to.
+
+### 4. (Optional) Put it behind HTTPS
+
+If the server isn't on the same machine, terminate TLS with Caddy / nginx / Cloudflare Tunnel so you can point dictate at `https://whisper.example.com` instead of a bare IP. Otherwise just use `http://localhost:8080` from the client config.
+
+### 5. (Optional) Run it as a service
+
+A minimal systemd unit on the server side:
+
+```ini
+[Unit]
+Description=whisper.cpp HTTP server
+After=network.target
+
+[Service]
+ExecStart=/opt/whisper.cpp/build/bin/whisper-server --host 0.0.0.0 --port 8080 --model /opt/whisper.cpp/models/ggml-large-v3-turbo.bin
+Restart=on-failure
+User=whisper
+
+[Install]
+WantedBy=multi-user.target
+```
+
+---
+
+## Part 2 — Install the client
+
+### Linux (Plasma 6 / Wayland)
+
+Requirements:
+- Plasma 6 / Wayland, KDE GlobalShortcuts portal
+- `wtype` (typing simulation): `sudo pacman -S wtype` (or your distro's equivalent)
+- `libpulse` (paplay for sound cues): `sudo pacman -S libpulse`
+- `wl-clipboard` + `ydotool` if you want the clipboard paste method (faster, default)
+- Python 3.13+
+
+```bash
+git clone https://github.com/rmatzker/dictate.git
+cd dictate
 ./scripts/install.sh
 ```
 
@@ -33,7 +110,7 @@ That:
 - Copies `config.toml.example` → `~/.config/dictate/config.toml` if absent.
 - Installs the systemd user unit and enables `dictate.service`.
 
-On first start KDE shows a portal dialog: confirm `Meta+Space`. After that the binding lives in KWin's settings — re-bind whenever via *System Settings → Shortcuts → search "dictate."*
+On first start KDE shows a portal dialog: confirm `Meta+Space`. After that the binding lives in KWin's settings — re-bind anytime via *System Settings → Shortcuts → search "dictate."*
 
 ### Windows
 
@@ -57,25 +134,127 @@ Defaults on Windows:
 
 To autostart at login, drop a shortcut to `pythonw.exe -m dictate` (use `pythonw`, not `python`, to suppress the console window) into `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`.
 
-## Config
+---
 
-`~/.config/dictate/config.toml`. See `config.toml.example` for the full template.
+## Part 3 — Configure `config.toml`
 
-Everything is overridable: server URL, sample rate, hotkey, audio cue paths, tray icons, transformations.
+The file is copied from `config.toml.example` on first install. Location:
 
-## Operations
+- Linux: `~/.config/dictate/config.toml`
+- Windows: `%APPDATA%\dictate\config.toml`
+
+After editing, restart the client: `systemctl --user restart dictate` (Linux) or relaunch the process (Windows).
+
+The bits you'll actually want to touch:
+
+### `[server]` — point at your whisper.cpp
+
+```toml
+[server]
+url = "http://localhost:8080"   # or https://whisper.example.com
+connect_timeout = 3.0
+read_timeout = 60.0             # bump if you use a slower model
+retries = 1                     # extra attempts on timeouts / HTTP 5xx
+```
+
+### `[recording]` — input handling and safety nets
+
+```toml
+[recording]
+device = "pulse"                # Linux: PulseAudio / PipeWire device; Windows ignores this
+sample_rate = 16000             # whisper.cpp expects 16 kHz
+keep_local_copies = false       # save WAVs to ~/.local/share/dictate/recordings/ if true
+max_local_copies = 50           # ring-buffer size
+silence_rms_threshold = 200.0   # skip transcription on near-silence (whisper hallucinates on silence)
+min_duration_ms = 250           # skip accidental hotkey taps
+max_duration_sec = 300          # auto-stop runaway recordings; 0 disables
+
+# Drop transcriptions whose final text matches any of these regexes —
+# these are common whisper.cpp training-data ghosts on near-silent input.
+discard_if_matches = [
+    '^\s*\*[^*]+\*\s*$',
+    '^\s*\[[^\]]+\]\s*$',
+    '^\s*Thanks?\s+for\s+watching.*$',
+    '^\s*Thank\s+you\.?\s*$',
+    '^\s*you\.?\s*$',
+]
+```
+
+### `[hotkey]` — what triggers a recording
+
+```toml
+[hotkey]
+toggle = "Meta+Space"           # Linux default; rebind in System Settings → Shortcuts
+                                # Windows default: "Ctrl+Shift+Space"
+```
+
+### `[sounds]` — start/stop cues
+
+```toml
+[sounds]
+enabled = true
+start  = "auto"   # generated upward blip; or absolute path to a .wav
+stop   = "auto"   # generated downward blip
+volume = 0.5      # 0.0 silent → 1.0 file level
+```
+
+### `[paste]` — how transcribed text reaches your cursor (Linux only)
+
+```toml
+[paste]
+method = "clipboard"            # "clipboard" — wl-copy + ydotool Ctrl+Shift+V (fastest)
+                                # "ydotool"   — types char-by-char (drops chars at low key-delay)
+                                # "wtype"     — wlroots compositors only
+press_enter_after = false       # send Enter after paste (handy when dictating into chat/prompts)
+restore_clipboard = true        # snapshot + restore the clipboard around the paste
+restore_delay_ms = 400          # wait this long before restoring
+```
+
+### `[tray]` — icon names
+
+```toml
+[tray]
+enabled = true
+icon_idle      = "audio-input-microphone"   # freedesktop name on Linux; ignored on Windows
+icon_recording = "media-record"
+icon_error     = "dialog-warning"
+```
+
+### `[[transformations]]` — regex cleanups before paste
+
+Whisper.cpp inserts a newline at every segment boundary, which splits contractions weirdly. These two rules fix the common cases:
+
+```toml
+[[transformations]]
+name = "glue contractions"
+find = "\\s*\\n+\\s*(?='[a-zA-Z])"   # "don\n't" → "don't"
+replace = ""
+regex = true
+
+[[transformations]]
+name = "strip newlines"
+find = '\s*\n+\s*'                   # collapse remaining segment newlines into spaces
+replace = " "
+regex = true
+```
+
+Add your own to scrub filler words, normalize jargon, etc. They run in declaration order.
+
+---
+
+## Operations (Linux)
 
 ```
 systemctl --user status dictate          # is it running?
 systemctl --user restart dictate         # after editing config
 journalctl --user -u dictate -f          # tail logs
-systemctl --user stop dictate            # quit (also: middle-click tray icon when implemented)
+systemctl --user stop dictate            # quit
 ```
 
 ## File layout
 
 ```
-~/Projects/dictate/                      # this repo (NFS-backed, fine for code)
+<repo>/                                  # this checkout
 ~/.local/share/dictate/venv/             # local-disk Python env
 ~/.local/share/dictate/sounds/           # generated start.wav / stop.wav
 ~/.local/share/dictate/recordings/       # only if keep_local_copies=true
