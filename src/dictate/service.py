@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import re
+import shutil
 import signal as signal_mod
 import sys
 import uuid
@@ -232,7 +233,9 @@ class DictateService:
             failed_dir = config_mod.RECORDINGS_DIR / "failed"
             failed_dir.mkdir(parents=True, exist_ok=True)
             dest = failed_dir / wav_path.name
-            wav_path.replace(dest)
+            # shutil.move handles cross-filesystem moves (Path.replace doesn't):
+            # WAVs live in /tmp (tmpfs) by default, failed/ lives under $HOME.
+            shutil.move(str(wav_path), str(dest))
             log.warning("preserved failed recording (%s): %s", reason, dest)
         except Exception:
             log.exception("could not preserve failed WAV; deleting")
