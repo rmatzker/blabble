@@ -2,7 +2,6 @@ import asyncio
 import logging
 import os
 import re
-import shutil
 import signal as signal_mod
 import sys
 import uuid
@@ -177,7 +176,6 @@ class DictateService:
         """Sent the WAV to the backend, transform the result, and paste.
         Runs *outside* the toggle lock so a hung/unreachable backend doesn't
         block the hotkey."""
-        keep_on_success = True
         try:
             text = await transcribe.transcribe(
                 self.cfg.server.url,
@@ -211,35 +209,22 @@ class DictateService:
                     text,
                     press_enter_after=self.cfg.paste.press_enter_after,
                 )
-        except Exception as e:
+        except Exception:
             log.exception("transcription/paste failed")
-            keep_on_success = False
-            self._preserve_failed_wav(wav_path, reason=type(e).__name__)
             self._signal_error()
         finally:
-            if keep_on_success:
-                self._cleanup_wav(wav_path)
+            # Whether transcription succeeded or not, treat the WAV the same:
+            # _wav_path already chose /tmp vs. RECORDINGS_DIR based on
+            # keep_local_copies, so users who opted into keeping recordings
+            # get failures saved with rotation; everyone else gets a clean
+            # delete and no orphan files piling up.
+            self._cleanup_wav(wav_path)
 
     def _cleanup_wav(self, wav_path: Path) -> None:
         if not self.cfg.recording.keep_local_copies:
             wav_path.unlink(missing_ok=True)
         else:
             self._enforce_max_copies()
-
-    def _preserve_failed_wav(self, wav_path: Path, *, reason: str) -> None:
-        """Move a WAV whose transcription failed into a ``failed/`` dir under
-        the recordings location so the user doesn't lose their dictation."""
-        try:
-            failed_dir = config_mod.RECORDINGS_DIR / "failed"
-            failed_dir.mkdir(parents=True, exist_ok=True)
-            dest = failed_dir / wav_path.name
-            # shutil.move handles cross-filesystem moves (Path.replace doesn't):
-            # WAVs live in /tmp (tmpfs) by default, failed/ lives under $HOME.
-            shutil.move(str(wav_path), str(dest))
-            log.warning("preserved failed recording (%s): %s", reason, dest)
-        except Exception:
-            log.exception("could not preserve failed WAV; deleting")
-            wav_path.unlink(missing_ok=True)
 
     def _signal_error(self) -> None:
         if not self.backend or not self.backend.tray:
