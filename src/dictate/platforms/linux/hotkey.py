@@ -20,6 +20,8 @@ PORTAL_BUS = "org.freedesktop.portal.Desktop"
 PORTAL_PATH = "/org/freedesktop/portal/desktop"
 GS_IFACE = "org.freedesktop.portal.GlobalShortcuts"
 REQUEST_IFACE = "org.freedesktop.portal.Request"
+REGISTRY_IFACE = "org.freedesktop.host.portal.Registry"
+APP_ID = "dictate"
 
 # dbus-next's introspection parser rejects hyphenated property names
 # that the portal exposes (e.g. `power-saver-enabled`). Hand-rolled XML
@@ -83,6 +85,7 @@ class PortalHotkey:
         self._gs_iface = proxy.get_interface(GS_IFACE)
         self._gs_iface.on_activated(self._on_activated)
 
+        await self._register_app_id()
         self.session_handle = await self._create_session()
         log.info("portal session: %s", self.session_handle)
 
@@ -151,6 +154,25 @@ class PortalHotkey:
         except asyncio.TimeoutError:
             self._pending_requests.pop(request_path, None)
             raise
+
+    async def _register_app_id(self) -> None:
+        # xdg-desktop-portal >= 1.22 makes GlobalShortcuts.CreateSession fail
+        # with "An app id is required" for unsandboxed apps (no Flatpak/Snap
+        # id to infer). Declaring one via the host Registry portal satisfies
+        # the requirement. Missing on older portals — treat that as harmless.
+        try:
+            await self.bus.call(
+                Message(
+                    destination=PORTAL_BUS,
+                    path=PORTAL_PATH,
+                    interface=REGISTRY_IFACE,
+                    member="Register",
+                    signature="sa{sv}",
+                    body=[APP_ID, {}],
+                )
+            )
+        except Exception as e:
+            log.warning("could not register app id via host portal: %s", e)
 
     async def _create_session(self) -> str:
         # session_handle_token MUST be stable across restarts on KDE — Plasma's

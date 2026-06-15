@@ -5,6 +5,7 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV_DIR="${HOME}/.local/share/dictate/venv"
 CONFIG_DIR="${HOME}/.config/dictate"
 SYSTEMD_DIR="${HOME}/.config/systemd/user"
+APPS_DIR="${HOME}/.local/share/applications"
 
 missing=()
 command -v wtype >/dev/null    || missing+=(wtype)
@@ -34,9 +35,15 @@ else
     echo "  → $CONFIG_DIR/config.toml already exists, leaving it"
 fi
 
-echo "[3/4] Installing systemd user unit"
+echo "[3/4] Installing systemd user unit + desktop entry"
 mkdir -p "$SYSTEMD_DIR"
 sed "s|@VENV@|$VENV_DIR|g" "$REPO_DIR/systemd/dictate.service" > "$SYSTEMD_DIR/dictate.service"
+# The desktop entry gives dictate an XDG app id. xdg-desktop-portal >= 1.22
+# requires one to open a GlobalShortcuts session (else CreateSession fails
+# with "An app id is required"). The file basename ('dictate') is the app id.
+mkdir -p "$APPS_DIR"
+sed "s|@VENV@|$VENV_DIR|g" "$REPO_DIR/share/dictate.desktop" > "$APPS_DIR/dictate.desktop"
+command -v update-desktop-database >/dev/null && update-desktop-database "$APPS_DIR" 2>/dev/null || true
 systemctl --user daemon-reload
 systemctl --user enable --now dictate.service
 

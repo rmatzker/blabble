@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Dictate
+Comment=Local-first voice dictation
+Exec=@VENV@/bin/python -m dictate
+Terminal=false
+NoDisplay=true

@@ -9,6 +9,7 @@ SYSTEMD_DIR="${HOME}/.config/systemd/user"
 echo "Stopping & disabling service"
 systemctl --user disable --now dictate.service 2>/dev/null || true
 rm -f "$SYSTEMD_DIR/dictate.service"
+rm -f "${HOME}/.local/share/applications/dictate.desktop"
 systemctl --user daemon-reload
 
 echo "Removing venv: $VENV_DIR"
