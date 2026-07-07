@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VENV_DIR="${HOME}/.local/share/dictate/venv"
-CONFIG_DIR="${HOME}/.config/dictate"
-DATA_DIR="${HOME}/.local/share/dictate"
+VENV_DIR="${HOME}/.local/share/blabble/venv"
+CONFIG_DIR="${HOME}/.config/blabble"
+DATA_DIR="${HOME}/.local/share/blabble"
 SYSTEMD_DIR="${HOME}/.config/systemd/user"
 
 echo "Stopping & disabling service"
-systemctl --user disable --now dictate.service 2>/dev/null || true
-rm -f "$SYSTEMD_DIR/dictate.service"
-rm -f "${HOME}/.local/share/applications/dictate.desktop"
+systemctl --user disable --now blabble.service 2>/dev/null || true
+rm -f "$SYSTEMD_DIR/blabble.service"
+rm -f "${HOME}/.local/share/applications/blabble.desktop"
 systemctl --user daemon-reload
 
 echo "Removing venv: $VENV_DIR"

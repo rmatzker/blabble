@@ -21,7 +21,7 @@ PORTAL_PATH = "/org/freedesktop/portal/desktop"
 GS_IFACE = "org.freedesktop.portal.GlobalShortcuts"
 REQUEST_IFACE = "org.freedesktop.portal.Request"
 REGISTRY_IFACE = "org.freedesktop.host.portal.Registry"
-APP_ID = "dictate"
+APP_ID = "blabble"
 
 # dbus-next's introspection parser rejects hyphenated property names
 # that the portal exposes (e.g. `power-saver-enabled`). Hand-rolled XML
@@ -181,7 +181,7 @@ class PortalHotkey:
         # consent prompt every run, plus an orphan group left behind.
         opts = {
             "handle_token": Variant("s", secrets.token_hex(8)),
-            "session_handle_token": Variant("s", "dictate"),
+            "session_handle_token": Variant("s", "blabble"),
         }
         request_path = await self._gs_iface.call_create_session(opts)
         result = await self._await_response(request_path)

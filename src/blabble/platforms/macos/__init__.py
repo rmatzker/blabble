@@ -12,7 +12,7 @@ Permissions required (one-time, per-bundle-identity):
 Both attach to the binary, so a proper .app bundle (py2app or
 PyInstaller --windowed) is required for the grant to persist.
 
-Autostart: ~/Library/LaunchAgents/com.matzker.dictate.plist with RunAtLoad=true.
+Autostart: ~/Library/LaunchAgents/com.matzker.blabble.plist with RunAtLoad=true.
 
 Packaging: PyInstaller --windowed (Apple Silicon + Intel via separate builds,
 or universal2 if dependency wheels permit).

@@ -2,8 +2,8 @@
 
 Autostart: drop a .lnk into
 %APPDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup pointing at
-`pythonw.exe -m dictate` (or the PyInstaller .exe). pythonw avoids the
-console window flash; -m dictate still works.
+`pythonw.exe -m blabble` (or the PyInstaller .exe). pythonw avoids the
+console window flash; -m blabble still works.
 
 Packaging (future): PyInstaller --windowed --onefile.
 """

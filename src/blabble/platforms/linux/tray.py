@@ -156,17 +156,17 @@ class _StatusNotifierItem(ServiceInterface):
         self._recording_icon = recording_icon
         self._error_icon = error_icon
         self._state: TrayState = "idle"
-        self._tooltip_title = "dictate · idle"
+        self._tooltip_title = "blabble · idle"
         self.on_activate: Callable[[], None] | None = None
 
     def set_state(self, state: TrayState) -> None:
         self._state = state
         if state == "recording":
-            self._tooltip_title = "dictate · recording"
+            self._tooltip_title = "blabble · recording"
         elif state == "error":
-            self._tooltip_title = "dictate · transcription failed"
+            self._tooltip_title = "blabble · transcription failed"
         else:
-            self._tooltip_title = "dictate · idle"
+            self._tooltip_title = "blabble · idle"
         self.NewIcon()
         self.NewToolTip()
 
@@ -184,11 +184,11 @@ class _StatusNotifierItem(ServiceInterface):
 
     @dbus_property(access=PropertyAccess.READ)
     def Id(self) -> "s":
-        return "dictate"
+        return "blabble"
 
     @dbus_property(access=PropertyAccess.READ)
     def Title(self) -> "s":
-        return "dictate"
+        return "blabble"
 
     @dbus_property(access=PropertyAccess.READ)
     def Status(self) -> "s":

@@ -1,4 +1,4 @@
-# dictate
+# blabble
 
 Local-first voice dictation client. Press a hotkey, speak, get text typed at your cursor.
 
@@ -8,7 +8,7 @@ Points at a self-hosted [whisper.cpp](https://github.com/ggerganov/whisper.cpp) 
 
 ```
    ┌──────────────────┐    audio (WAV)    ┌────────────────────┐
-   │ dictate (client) │ ────────────────► │ whisper.cpp server │
+   │ blabble (client) │ ────────────────► │ whisper.cpp server │
    │  hotkey + mic    │ ◄──────────────── │   (your machine    │
    │  + text paste    │   transcribed     │    or a homelab)   │
    └──────────────────┘      text         └────────────────────┘
@@ -62,11 +62,11 @@ Models land in `models/ggml-<name>.bin`.
     --model models/ggml-large-v3-turbo.bin
 ```
 
-That exposes an OpenAI-compatible endpoint at `POST http://<host>:8080/v1/audio/transcriptions` accepting `multipart/form-data` with a `file` field — which is exactly what the dictate client posts to.
+That exposes an OpenAI-compatible endpoint at `POST http://<host>:8080/v1/audio/transcriptions` accepting `multipart/form-data` with a `file` field — which is exactly what the blabble client posts to.
 
 ### 4. (Optional) Put it behind HTTPS
 
-If the server isn't on the same machine, terminate TLS with Caddy / nginx / Cloudflare Tunnel so you can point dictate at `https://whisper.example.com` instead of a bare IP. Otherwise just use `http://localhost:8080` from the client config.
+If the server isn't on the same machine, terminate TLS with Caddy / nginx / Cloudflare Tunnel so you can point blabble at `https://whisper.example.com` instead of a bare IP. Otherwise just use `http://localhost:8080` from the client config.
 
 ### 5. (Optional) Run it as a service
 
@@ -100,39 +100,39 @@ Requirements:
 - Python 3.13+
 
 ```bash
-git clone https://github.com/rmatzker/dictate.git
-cd dictate
+git clone https://github.com/rmatzker/blabble.git
+cd blabble
 ./scripts/install.sh
 ```
 
 That:
-- Creates a Python venv at `~/.local/share/dictate/venv/` (local disk, not NFS).
-- Copies `config.toml.example` → `~/.config/dictate/config.toml` if absent.
-- Installs the systemd user unit and enables `dictate.service`.
+- Creates a Python venv at `~/.local/share/blabble/venv/` (local disk, not NFS).
+- Copies `config.toml.example` → `~/.config/blabble/config.toml` if absent.
+- Installs the systemd user unit and enables `blabble.service`.
 
-On first start KDE shows a portal dialog: confirm `Meta+Space`. After that the binding lives in KWin's settings — re-bind anytime via *System Settings → Shortcuts → search "dictate."*
+On first start KDE shows a portal dialog: confirm `Meta+Space`. After that the binding lives in KWin's settings — re-bind anytime via *System Settings → Shortcuts → search "blabble."*
 
 ### Windows
 
 Tested on Windows 11 with Python 3.13.
 
 ```powershell
-git clone https://github.com/rmatzker/dictate.git
-cd dictate
+git clone https://github.com/rmatzker/blabble.git
+cd blabble
 py -3.13 -m venv .venv
 .venv\Scripts\pip install -e .
-.venv\Scripts\python -m dictate
+.venv\Scripts\python -m blabble
 ```
 
 Dependencies install automatically via platform markers (`pynput`, `pyperclip`, `pystray`, `pillow`, `sounddevice`).
 
 Defaults on Windows:
-- Hotkey: `Ctrl+Shift+Space` (configurable in `%APPDATA%\dictate\config.toml`)
-- Config: `%APPDATA%\dictate\config.toml`
-- Data: `%LOCALAPPDATA%\dictate\` (sounds, optional recordings)
+- Hotkey: `Ctrl+Shift+Space` (configurable in `%APPDATA%\blabble\config.toml`)
+- Config: `%APPDATA%\blabble\config.toml`
+- Data: `%LOCALAPPDATA%\blabble\` (sounds, optional recordings)
 - Tray: red dot when recording, gray otherwise
 
-To autostart at login, drop a shortcut to `pythonw.exe -m dictate` (use `pythonw`, not `python`, to suppress the console window) into `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`.
+To autostart at login, drop a shortcut to `pythonw.exe -m blabble` (use `pythonw`, not `python`, to suppress the console window) into `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`.
 
 ---
 
@@ -140,10 +140,10 @@ To autostart at login, drop a shortcut to `pythonw.exe -m dictate` (use `pythonw
 
 The file is copied from `config.toml.example` on first install. Location:
 
-- Linux: `~/.config/dictate/config.toml`
-- Windows: `%APPDATA%\dictate\config.toml`
+- Linux: `~/.config/blabble/config.toml`
+- Windows: `%APPDATA%\blabble\config.toml`
 
-After editing, restart the client: `systemctl --user restart dictate` (Linux) or relaunch the process (Windows).
+After editing, restart the client: `systemctl --user restart blabble` (Linux) or relaunch the process (Windows).
 
 The bits you'll actually want to touch:
 
@@ -163,7 +163,7 @@ retries = 1                     # extra attempts on timeouts / HTTP 5xx
 [recording]
 device = "pulse"                # Linux: PulseAudio / PipeWire device; Windows ignores this
 sample_rate = 16000             # whisper.cpp expects 16 kHz
-keep_local_copies = false       # save WAVs to ~/.local/share/dictate/recordings/ if true
+keep_local_copies = false       # save WAVs to ~/.local/share/blabble/recordings/ if true
 max_local_copies = 50           # ring-buffer size
 silence_rms_threshold = 200.0   # skip transcription on near-silence (whisper hallucinates on silence)
 min_duration_ms = 250           # skip accidental hotkey taps
@@ -245,21 +245,21 @@ Add your own to scrub filler words, normalize jargon, etc. They run in declarati
 ## Operations (Linux)
 
 ```
-systemctl --user status dictate          # is it running?
-systemctl --user restart dictate         # after editing config
-journalctl --user -u dictate -f          # tail logs
-systemctl --user stop dictate            # quit
+systemctl --user status blabble          # is it running?
+systemctl --user restart blabble         # after editing config
+journalctl --user -u blabble -f          # tail logs
+systemctl --user stop blabble            # quit
 ```
 
 ## File layout
 
 ```
 <repo>/                                  # this checkout
-~/.local/share/dictate/venv/             # local-disk Python env
-~/.local/share/dictate/sounds/           # generated start.wav / stop.wav
-~/.local/share/dictate/recordings/       # only if keep_local_copies=true
-~/.config/dictate/config.toml            # your settings
-~/.config/systemd/user/dictate.service   # service unit
+~/.local/share/blabble/venv/             # local-disk Python env
+~/.local/share/blabble/sounds/           # generated start.wav / stop.wav
+~/.local/share/blabble/recordings/       # only if keep_local_copies=true
+~/.config/blabble/config.toml            # your settings
+~/.config/systemd/user/blabble.service   # service unit
 ```
 
 ## Why not Whispering?

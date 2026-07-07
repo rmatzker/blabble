@@ -1,0 +1,17 @@
+[Unit]
+Description=blabble — local-first voice dictation
+After=graphical-session.target
+PartOf=graphical-session.target
+# Don't crash-loop too aggressively if something is genuinely wrong.
+# StartLimit* belong in [Unit], not [Service] (systemd ignores them there).
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+ExecStart=@VENV@/bin/python -m blabble
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target

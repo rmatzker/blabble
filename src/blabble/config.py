@@ -12,14 +12,14 @@ def _platform_paths() -> tuple[Path, Path]:
     if sys.platform == "win32":
         appdata = Path(os.environ.get("APPDATA", home / "AppData" / "Roaming"))
         local = Path(os.environ.get("LOCALAPPDATA", home / "AppData" / "Local"))
-        return appdata / "dictate", local / "dictate"
+        return appdata / "blabble", local / "blabble"
     if sys.platform == "darwin":
-        base = home / "Library" / "Application Support" / "dictate"
+        base = home / "Library" / "Application Support" / "blabble"
         return base, base
     # Linux / other POSIX
     xdg_config = Path(os.environ.get("XDG_CONFIG_HOME", home / ".config"))
     xdg_data = Path(os.environ.get("XDG_DATA_HOME", home / ".local" / "share"))
-    return xdg_config / "dictate", xdg_data / "dictate"
+    return xdg_config / "blabble", xdg_data / "blabble"
 
 
 CONFIG_DIR, LOCAL_DATA = _platform_paths()

@@ -2,8 +2,8 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VENV_DIR="${HOME}/.local/share/dictate/venv"
-CONFIG_DIR="${HOME}/.config/dictate"
+VENV_DIR="${HOME}/.local/share/blabble/venv"
+CONFIG_DIR="${HOME}/.config/blabble"
 SYSTEMD_DIR="${HOME}/.config/systemd/user"
 APPS_DIR="${HOME}/.local/share/applications"
 
@@ -37,20 +37,20 @@ fi
 
 echo "[3/4] Installing systemd user unit + desktop entry"
 mkdir -p "$SYSTEMD_DIR"
-sed "s|@VENV@|$VENV_DIR|g" "$REPO_DIR/systemd/dictate.service" > "$SYSTEMD_DIR/dictate.service"
-# The desktop entry gives dictate an XDG app id. xdg-desktop-portal >= 1.22
+sed "s|@VENV@|$VENV_DIR|g" "$REPO_DIR/systemd/blabble.service" > "$SYSTEMD_DIR/blabble.service"
+# The desktop entry gives blabble an XDG app id. xdg-desktop-portal >= 1.22
 # requires one to open a GlobalShortcuts session (else CreateSession fails
-# with "An app id is required"). The file basename ('dictate') is the app id.
+# with "An app id is required"). The file basename ('blabble') is the app id.
 mkdir -p "$APPS_DIR"
-sed "s|@VENV@|$VENV_DIR|g" "$REPO_DIR/share/dictate.desktop" > "$APPS_DIR/dictate.desktop"
+sed "s|@VENV@|$VENV_DIR|g" "$REPO_DIR/share/blabble.desktop" > "$APPS_DIR/blabble.desktop"
 command -v update-desktop-database >/dev/null && update-desktop-database "$APPS_DIR" 2>/dev/null || true
 systemctl --user daemon-reload
-systemctl --user enable --now dictate.service
+systemctl --user enable --now blabble.service
 
 echo "[4/4] Done"
 echo
-echo "Status:  systemctl --user status dictate"
-echo "Logs:    journalctl --user -u dictate -f"
+echo "Status:  systemctl --user status blabble"
+echo "Logs:    journalctl --user -u blabble -f"
 echo
 echo "First-time hotkey: KDE will prompt to confirm Meta+Space."
-echo "Rebind any time:   System Settings → Shortcuts → search 'dictate'."
+echo "Rebind any time:   System Settings → Shortcuts → search 'blabble'."

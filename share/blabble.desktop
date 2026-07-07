@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
-Name=Dictate
+Name=Blabble
 Comment=Local-first voice dictation
-Exec=@VENV@/bin/python -m dictate
+Exec=@VENV@/bin/python -m blabble
 Terminal=false
 NoDisplay=true

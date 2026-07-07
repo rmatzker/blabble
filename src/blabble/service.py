@@ -15,7 +15,7 @@ from .platforms.base import Backend, MenuItemSpec, ShortcutSpec
 log = logging.getLogger(__name__)
 
 
-class DictateService:
+class BlabbleService:
     def __init__(self, cfg: config_mod.Config):
         self.cfg = cfg
         self.recording = False
@@ -73,7 +73,7 @@ class DictateService:
         ])
         self.backend.hotkey.on_shortcut("toggle", self.toggle)
 
-        log.info("dictate ready (hotkey=%s)", self.cfg.hotkey.toggle)
+        log.info("blabble ready (hotkey=%s)", self.cfg.hotkey.toggle)
 
         self._shutdown = asyncio.get_event_loop().create_future()
         _install_signal_handlers(self._shutdown)
@@ -247,13 +247,13 @@ class DictateService:
         else:
             d = Path(os.environ.get("TMPDIR") or os.environ.get("TEMP") or "/tmp")
         d.mkdir(parents=True, exist_ok=True)
-        return d / f"dictate-{uuid.uuid4().hex[:8]}.wav"
+        return d / f"blabble-{uuid.uuid4().hex[:8]}.wav"
 
     def _enforce_max_copies(self) -> None:
         d = config_mod.RECORDINGS_DIR
         if not d.exists():
             return
-        files = sorted(d.glob("dictate-*.wav"), key=lambda p: p.stat().st_mtime)
+        files = sorted(d.glob("blabble-*.wav"), key=lambda p: p.stat().st_mtime)
         excess = len(files) - self.cfg.recording.max_local_copies
         for f in files[: max(0, excess)]:
             f.unlink(missing_ok=True)
@@ -288,4 +288,4 @@ def main() -> None:
         stream=sys.stderr,
     )
     cfg = config_mod.load()
-    asyncio.run(DictateService(cfg).run())
+    asyncio.run(BlabbleService(cfg).run())

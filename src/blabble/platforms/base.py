@@ -1,4 +1,4 @@
-"""Cross-platform protocols for the OS-coupled parts of dictate.
+"""Cross-platform protocols for the OS-coupled parts of blabble.
 
 Each backend (linux/windows/macos) implements these so service.py can
 orchestrate the recording pipeline without importing any OS-specific code.

@@ -49,7 +49,7 @@ class PystrayTray:
 
         menu = pystray.Menu(
             pystray.MenuItem(
-                "dictate (toggle)",
+                "blabble (toggle)",
                 self._wrap_activate(),
                 default=True,  # left-click = this item
             ),
@@ -58,9 +58,9 @@ class PystrayTray:
         )
 
         self._icon = pystray.Icon(
-            "dictate",
+            "blabble",
             icon=_IDLE_IMAGE,
-            title="dictate · idle",
+            title="blabble · idle",
             menu=menu,
         )
         self._icon.run_detached()
@@ -98,13 +98,13 @@ class PystrayTray:
             return
         if state == "recording":
             self._icon.icon = _RECORDING_IMAGE
-            self._icon.title = "dictate · recording"
+            self._icon.title = "blabble · recording"
         elif state == "error":
             self._icon.icon = _ERROR_IMAGE
-            self._icon.title = "dictate · transcription failed"
+            self._icon.title = "blabble · transcription failed"
         else:
             self._icon.icon = _IDLE_IMAGE
-            self._icon.title = "dictate · idle"
+            self._icon.title = "blabble · idle"
 
     def notify_menu_item_changed(self, item_id: int) -> None:
         # pystray re-evaluates `checked` lambdas when the menu reopens
