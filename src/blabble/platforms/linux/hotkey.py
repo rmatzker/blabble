@@ -89,16 +89,20 @@ class PortalHotkey:
         self.session_handle = await self._create_session()
         log.info("portal session: %s", self.session_handle)
 
+        # Always bind, even when ListShortcuts says the shortcuts survived
+        # from a prior session. Since Plasma 6.7.4 the key grab is only
+        # (re)activated by BindShortcuts — a session that merely lists its
+        # shortcuts never receives Activated signals. Rebinding is safe:
+        # existing shortcuts keep their stored trigger (preferred_trigger
+        # only seeds brand-new ones), so user customizations survive.
         existing = await self._list_shortcuts()
         existing_ids = {sid for sid, _ in existing}
-        missing = [s for s in shortcuts if s.id not in existing_ids]
+        new = [s.id for s in shortcuts if s.id not in existing_ids]
 
-        if missing:
-            await self._bind_shortcuts(missing)
-            log.info("shortcuts bound (new): %s", [s.id for s in missing])
-        else:
-            log.info("shortcuts already bound from prior session: %s",
-                     [s.id for s in shortcuts])
+        await self._bind_shortcuts(shortcuts)
+        log.info("shortcuts bound: %s%s",
+                 [s.id for s in shortcuts],
+                 f" (new: {new})" if new else "")
 
     def on_shortcut(self, shortcut_id: str, callback: AsyncCallback) -> None:
         self._activated_callbacks[shortcut_id] = callback
