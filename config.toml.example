@@ -7,7 +7,7 @@ read_timeout = 60.0             # seconds to wait for transcription response
 retries = 1                     # extra attempts on transient errors (connect/read timeout, HTTP 5xx); 0 disables
 
 [recording]
-device = "pulse"
+device = "pulse"                # Linux: PulseAudio/PipeWire. On Windows/macOS use "" for the default mic (recommended); a name substring picks a specific device, falling back to the default if it's not found
 sample_rate = 16000
 keep_local_copies = false       # if true, save WAVs to ~/.local/share/blabble/recordings/
 max_local_copies = 50

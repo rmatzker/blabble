@@ -12,7 +12,9 @@ class Recorder:
     def __init__(self, sample_rate: int = 16000, channels: int = 1, device: str | None = None):
         self.sample_rate = sample_rate
         self.channels = channels
-        self.device = device
+        # sounddevice only treats None as "system default"; "" is a substring
+        # query that matches every device and errors out when several exist.
+        self.device = device or None
         self._frames: list[np.ndarray] = []
         self._stream: sd.InputStream | None = None
 
@@ -25,14 +27,26 @@ class Recorder:
         if self._stream is not None:
             raise RuntimeError("recorder already started")
         self._frames = []
-        self._stream = sd.InputStream(
+        try:
+            self._stream = self._open_stream(self.device)
+        except ValueError as e:
+            if self.device is None:
+                raise
+            # Named device not found — common with Bluetooth mics whose
+            # names shift between connects (e.g. AirPods on Windows).
+            log.warning("device %r unavailable (%s); falling back to system default",
+                        self.device, e)
+            self._stream = self._open_stream(None)
+        self._stream.start()
+
+    def _open_stream(self, device: str | None) -> sd.InputStream:
+        return sd.InputStream(
             samplerate=self.sample_rate,
             channels=self.channels,
             dtype="int16",
-            device=self.device,
+            device=device,
             callback=self._callback,
         )
-        self._stream.start()
 
     def stop(self, output_path: Path) -> Path:
         if self._stream is None:

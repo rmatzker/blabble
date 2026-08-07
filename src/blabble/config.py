@@ -40,8 +40,8 @@ def _default_hotkey() -> str:
 
 
 def _default_recording_device() -> str:
-    # Linux uses PulseAudio's "pulse" device explicitly; Win/Mac let
-    # sounddevice pick the system default (empty string = default).
+    # Linux uses PulseAudio's "pulse" device explicitly; Win/Mac use the
+    # system default mic ("" is normalized to None for sounddevice).
     return "pulse" if sys.platform.startswith("linux") else ""
 
 

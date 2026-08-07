@@ -161,7 +161,7 @@ retries = 1                     # extra attempts on timeouts / HTTP 5xx
 
 ```toml
 [recording]
-device = "pulse"                # Linux: PulseAudio / PipeWire device; Windows ignores this
+device = "pulse"                # Linux: PulseAudio / PipeWire device. Windows/macOS: "" = default mic (recommended); or a device-name substring, with fallback to the default mic if it doesn't match (Bluetooth names drift)
 sample_rate = 16000             # whisper.cpp expects 16 kHz
 keep_local_copies = false       # save WAVs to ~/.local/share/blabble/recordings/ if true
 max_local_copies = 50           # ring-buffer size
