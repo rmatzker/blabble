@@ -127,7 +127,7 @@ py -3.13 -m venv .venv
 Dependencies install automatically via platform markers (`pynput`, `pyperclip`, `pystray`, `pillow`, `sounddevice`).
 
 Defaults on Windows:
-- Hotkey: `Ctrl+Shift+Space` (configurable in `%APPDATA%\blabble\config.toml`)
+- Hotkey: `Ctrl+Shift+Space` (configurable in `%APPDATA%\blabble\config.toml`; set `toggle = "RightCtrl"` to trigger on a lone tap of Right Ctrl instead)
 - Config: `%APPDATA%\blabble\config.toml`
 - Data: `%LOCALAPPDATA%\blabble\` (sounds, optional recordings)
 - Tray: red dot when recording, gray otherwise
@@ -187,6 +187,8 @@ discard_if_matches = [
 toggle = "Meta+Space"           # Linux default; rebind in System Settings → Shortcuts
                                 # Windows default: "Ctrl+Shift+Space"
 ```
+
+On Windows, `toggle` can also be a single right-side modifier — `"RightCtrl"`, `"RightAlt"`, or `"RightShift"` — which fires on a lone *tap*: press and release within 0.5 s with no other key in between. Chords like Right Ctrl+C are unaffected, and the left-side key never triggers it.
 
 ### `[sounds]` — start/stop cues
 
