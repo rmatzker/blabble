@@ -165,7 +165,7 @@ device = "pulse"                # Linux: PulseAudio / PipeWire device. Windows/m
 sample_rate = 16000             # whisper.cpp expects 16 kHz
 keep_local_copies = false       # save WAVs to ~/.local/share/blabble/recordings/ if true
 max_local_copies = 50           # ring-buffer size
-silence_rms_threshold = 200.0   # skip transcription on near-silence (whisper hallucinates on silence)
+silence_rms_threshold = 200.0   # skip transcription on near-silence (whisper hallucinates on silence); compared to the loudest 5% of 30 ms frames, so pauses around a short phrase don't count against it
 min_duration_ms = 250           # skip accidental hotkey taps
 max_duration_sec = 300          # auto-stop runaway recordings; 0 disables
 

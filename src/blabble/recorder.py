@@ -73,11 +73,35 @@ class Recorder:
         return self._stream is not None
 
 
+# Speech-level measurement: RMS per 30 ms frame, then a high percentile.
+# A whole-clip RMS is diluted by pauses before/after the utterance, so a
+# short phrase in a long clip reads as "silent"; the loud frames don't.
+_FRAME_MS = 30
+_SPEECH_PERCENTILE = 95
+# Skip the stream-open transient (a click at the very start of the
+# recording), which would otherwise dominate the percentile of short clips.
+_SKIP_LEAD_MS = 90
+
+
+def speech_level(samples: np.ndarray, sample_rate: int) -> float:
+    """RMS of the loudest frames (95th percentile of 30 ms frame RMS)."""
+    n = max(1, sample_rate * _FRAME_MS // 1000)
+    skip = sample_rate * _SKIP_LEAD_MS // 1000
+    x = samples[skip:] if samples.size - skip >= n else samples
+    x = x[: x.size // n * n].astype(np.float64)
+    if x.size == 0:
+        return 0.0
+    frame_rms = np.sqrt(np.mean(x.reshape(-1, n) ** 2, axis=1))
+    return float(np.percentile(frame_rms, _SPEECH_PERCENTILE))
+
+
 def is_silent(wav_path: Path, *, rms_threshold: float = 200.0,
               min_duration_ms: int = 250) -> tuple[bool, str]:
     """Return (is_silent, reason). Used to skip transcription of accidental
     or empty recordings — whisper.cpp hallucinates phrases like
     '[BLANK_AUDIO]' or 'Thanks for watching!' on silent input.
+
+    rms_threshold is compared against speech_level(), not whole-clip RMS.
     """
     with wave.open(str(wav_path), "rb") as wf:
         n_frames = wf.getnframes()
@@ -94,8 +118,9 @@ def is_silent(wav_path: Path, *, rms_threshold: float = 200.0,
     samples = np.frombuffer(frames, dtype=np.int16)
     if samples.size == 0:
         return True, "no samples"
-    rms = float(np.sqrt(np.mean(samples.astype(np.float64) ** 2)))
-    if rms < rms_threshold:
-        return True, f"low energy (rms={rms:.0f} < {rms_threshold:.0f})"
+    level = speech_level(samples, sample_rate)
+    log.info("speech level %.0f (threshold %.0f)", level, rms_threshold)
+    if level < rms_threshold:
+        return True, f"low energy (speech level={level:.0f} < {rms_threshold:.0f})"
 
     return False, ""

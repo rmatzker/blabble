@@ -11,7 +11,7 @@ device = "pulse"                # Linux: PulseAudio/PipeWire. On Windows/macOS u
 sample_rate = 16000
 keep_local_copies = false       # if true, save WAVs to ~/.local/share/blabble/recordings/
 max_local_copies = 50
-silence_rms_threshold = 200.0   # skip transcription if WAV's RMS energy is below this (whisper hallucinates on silence)
+silence_rms_threshold = 200.0   # skip transcription if the speech level (RMS of the loudest 5% of 30 ms frames) is below this (whisper hallucinates on silence); each recording's level is logged
 min_duration_ms = 250           # skip transcription for recordings shorter than this (accidental hotkey taps)
 max_duration_sec = 300          # auto-stop after this many seconds (safety net for forgotten toggles); 0 disables
 # Hallucination filter: drop transcriptions whose final text matches any of these regexes.
